@@ -7,34 +7,31 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   </head>
   <body>
-    <div class="app-shell">
-      {% if session.get('user') %}
-        <nav class="topbar">
-          <div class="brand">Student CGPA System</div>
-          <div class="nav-links">
+    {% if session.get('user') %}
+      <nav class="header">
+        <div class="nav-container">
+          <a href="{{ url_for('dashboard') }}" class="logo">CGPA System</a>
+          <div class="nav-right">
             <a href="{{ url_for('dashboard') }}">Dashboard</a>
             {% if is_admin %}
-              <a href="{{ url_for('admin_dashboard') }}">Admin</a>
-              <a href="{{ url_for('create_student') }}">Add Student</a>
+              <a href="{{ url_for('create_student') }}">+ Student</a>
             {% endif %}
             <a href="{{ url_for('logout') }}">Logout</a>
           </div>
-        </nav>
-      {% endif %}
+        </div>
+      </nav>
+    {% endif %}
 
-      <main class="container {% if not session.get('user') %}login-container{% endif %}">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            <div class="flash-container">
-              {% for category, message in messages %}
-                <div class="flash {{ category }}">{{ message }}</div>
-              {% endfor %}
-            </div>
-          {% endif %}
-        {% endwith %}
+    <main class="{% if not session.get('user') %}auth-layout{% else %}app-layout{% endif %}">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="toast {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
 
-        {% block content %}{% endblock %}
-      </main>
-    </div>
+      {% block content %}{% endblock %}
+    </main>
   </body>
 </html>

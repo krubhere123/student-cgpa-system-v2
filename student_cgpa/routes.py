@@ -36,47 +36,59 @@ def register_routes(app: Flask) -> None:
             return []
         return json.loads(STUDENTS_FILE.read_text(encoding="utf-8"))
 
-    if not USERS_FILE.exists():
-        default_users = [
-            {
-                "username": "admin",
-                "password_hash": generate_password_hash("admin123"),
-                "role": "admin",
-                "name": "System Administrator",
-            },
-            {
-                "username": "student",
-                "password_hash": generate_password_hash("student123"),
-                "role": "student",
-                "student_id": "STD-1001",
-                "name": "Ada Johnson",
-            },
-        ]
-        save_users(default_users)
+    def ensure_seed_data() -> None:
+        if not USERS_FILE.exists():
+            default_users = [
+                {
+                    "username": "admin",
+                    "password_hash": generate_password_hash("admin123"),
+                    "role": "admin",
+                    "name": "System Administrator",
+                },
+                {
+                    "username": "student",
+                    "password_hash": generate_password_hash("student123"),
+                    "role": "student",
+                    "student_id": "STD-1001",
+                    "name": "Ada Johnson",
+                },
+            ]
+            save_users(default_users)
 
-    if not STUDENTS_FILE.exists():
-        default_students = [
-            {
-                "student_id": "STD-1001",
-                "name": "Ada Johnson",
-                "records": [
-                    {"course_code": "CS101", "credit_hours": 3, "grade": "A"},
-                    {"course_code": "MATH201", "credit_hours": 4, "grade": "B+"},
-                    {"course_code": "ENG110", "credit_hours": 2, "grade": "A-"},
-                    {"course_code": "PHY150", "credit_hours": 3, "grade": "B"},
-                ],
-            },
-            {
-                "student_id": "STD-1002",
-                "name": "Daniel Smith",
-                "records": [
-                    {"course_code": "BIO220", "credit_hours": 3, "grade": "A-"},
-                    {"course_code": "CHEM101", "credit_hours": 4, "grade": "B"},
-                    {"course_code": "HIST210", "credit_hours": 2, "grade": "A"},
-                ],
-            },
-        ]
-        save_students(default_students)
+        if not STUDENTS_FILE.exists():
+            default_students = [
+                {
+                    "student_id": "STD-1001",
+                    "name": "Ada Johnson",
+                    "records": [
+                        {"course_code": "CS101", "credit_hours": 3, "grade": "A"},
+                        {"course_code": "MATH201", "credit_hours": 4, "grade": "B+"},
+                        {"course_code": "ENG110", "credit_hours": 2, "grade": "A-"},
+                        {"course_code": "PHY150", "credit_hours": 3, "grade": "B"},
+                    ],
+                },
+                {
+                    "student_id": "STD-1002",
+                    "name": "Daniel Smith",
+                    "records": [
+                        {"course_code": "BIO220", "credit_hours": 3, "grade": "A-"},
+                        {"course_code": "CHEM101", "credit_hours": 4, "grade": "B"},
+                        {"course_code": "HIST210", "credit_hours": 2, "grade": "A"},
+                    ],
+                },
+                {
+                    "student_id": "STD-1003",
+                    "name": "Sophia Lee",
+                    "records": [
+                        {"course_code": "CS210", "credit_hours": 3, "grade": "B+"},
+                        {"course_code": "ENG202", "credit_hours": 3, "grade": "C+"},
+                        {"course_code": "STAT110", "credit_hours": 3, "grade": "B"},
+                    ],
+                },
+            ]
+            save_students(default_students)
+
+    ensure_seed_data()
 
     def get_current_user() -> Dict[str, Any] | None:
         username = session.get("user")
@@ -109,6 +121,38 @@ def register_routes(app: Flask) -> None:
             return 0.0
         return CGPAService().calculate_cgpa_from_records(student_records_to_course_records(records))
 
+    def get_student_status(cgpa: float) -> str:
+        if cgpa >= 3.5:
+            return "Excellent"
+        if cgpa >= 3.0:
+            return "Good Standing"
+        if cgpa >= 2.0:
+            return "Satisfactory"
+        return "At Risk"
+
+    def build_admin_summary(students: List[Dict[str, Any]]) -> Dict[str, Any]:
+        if not students:
+            return {
+                "total_students": 0,
+                "average_cgpa": 0.0,
+                "highest_cgpa": 0.0,
+                "good_standing": 0,
+                "at_risk": 0,
+            }
+
+        cgpas = [calculate_student_cgpa(student) for student in students]
+        statuses = [get_student_status(cgpa) for cgpa in cgpas]
+        good_standing = sum(1 for status in statuses if status in {"Excellent", "Good Standing"})
+        at_risk = sum(1 for status in statuses if status == "At Risk")
+
+        return {
+            "total_students": len(students),
+            "average_cgpa": round(sum(cgpas) / len(cgpas), 4) if cgpas else 0.0,
+            "highest_cgpa": round(max(cgpas), 4) if cgpas else 0.0,
+            "good_standing": good_standing,
+            "at_risk": at_risk,
+        }
+
     def login_user(username: str, password: str) -> Dict[str, Any] | None:
         normalized_name = (username or "").strip()
         if not normalized_name:
@@ -129,8 +173,9 @@ def register_routes(app: Flask) -> None:
                     "student_id": "STD-1001" if normalized_name == "student" else None,
                 }
                 users.append(user)
-                user["password_hash"] = generate_password_hash(password)
-                save_users(users)
+
+            user["password_hash"] = generate_password_hash(password)
+            save_users(users)
             return user
 
         return None
@@ -172,24 +217,29 @@ def register_routes(app: Flask) -> None:
             flash("Please log in first.", "error")
             return redirect(url_for("login"))
 
+        students = load_students()
         if user.get("role") == "admin":
-            students = load_students()
-            enriched_students = []
-            for student in students:
-                enriched_students.append({**student, "cgpa": calculate_student_cgpa(student)})
-            return render_template("admin.html", students=enriched_students)
+            enriched_students = [
+                {**student, "cgpa": calculate_student_cgpa(student)} for student in students
+            ]
+            return render_template(
+                "admin.html",
+                students=enriched_students,
+                summary=build_admin_summary(enriched_students),
+            )
 
-        student = get_student_by_id(user.get("student_id") or "")
+        student = next((item for item in students if item["student_id"] == user.get("student_id")), None)
         if not student:
             flash("Student record not found.", "error")
             return redirect(url_for("logout"))
 
         cgpa = calculate_student_cgpa(student)
-        return render_template("dashboard.html", student=student, cgpa=cgpa)
-
-    @app.route("/admin")
-    def admin_dashboard():
-        return dashboard()
+        return render_template(
+            "dashboard.html",
+            student=student,
+            cgpa=cgpa,
+            status=get_student_status(cgpa),
+        )
 
     @app.route("/students/new", methods=["GET", "POST"])
     def create_student():
@@ -204,19 +254,19 @@ def register_routes(app: Flask) -> None:
 
             if not student_id or not name:
                 flash("Student ID and name are required.", "error")
-                return render_template("student_form.html", student=None, action="Create", is_admin=True)
+                return render_template("student_form.html", action="Create")
 
             students = load_students()
             if any(item.get("student_id") == student_id for item in students):
                 flash("A student with that ID already exists.", "error")
-                return render_template("student_form.html", student=None, action="Create", is_admin=True)
+                return render_template("student_form.html", action="Create")
 
             students.append({"student_id": student_id, "name": name, "records": []})
             save_students(students)
             flash("Student created successfully.", "success")
-            return redirect(url_for("admin_dashboard"))
+            return redirect(url_for("dashboard"))
 
-        return render_template("student_form.html", student=None, action="Create", is_admin=True)
+        return render_template("student_form.html", action="Create")
 
     @app.route("/students/<student_id>", methods=["GET", "POST"])
     def student_detail(student_id: str):
@@ -228,7 +278,7 @@ def register_routes(app: Flask) -> None:
         student = get_student_by_id(student_id)
         if not student:
             flash("Student not found.", "error")
-            return redirect(url_for("admin_dashboard"))
+            return redirect(url_for("dashboard"))
 
         if user.get("role") != "admin" and user.get("student_id") != student_id:
             flash("You do not have access to that student profile.", "error")
@@ -238,11 +288,19 @@ def register_routes(app: Flask) -> None:
             new_name = request.form.get("name", "").strip()
             if new_name:
                 student["name"] = new_name
-                save_students([s for s in load_students() if s.get("student_id") != student_id] + [student])
-                flash("Student record updated successfully.", "success")
+                students = [item for item in load_students() if item.get("student_id") != student_id]
+                students.append(student)
+                save_students(students)
+                flash("Student record updated.", "success")
 
-        student = get_student_by_id(student_id)
-        return render_template("student_detail.html", student=student, cgpa=calculate_student_cgpa(student), is_admin=(user.get("role") == "admin"))
+        cgpa = calculate_student_cgpa(student)
+        return render_template(
+            "student_detail.html",
+            student=student,
+            cgpa=cgpa,
+            status=get_student_status(cgpa),
+            is_admin=(user.get("role") == "admin"),
+        )
 
     @app.route("/students/<student_id>/delete", methods=["POST"])
     def delete_student(student_id: str):
@@ -254,13 +312,8 @@ def register_routes(app: Flask) -> None:
         students = load_students()
         students = [student for student in students if student.get("student_id") != student_id]
         save_students(students)
-
-        users = load_users()
-        users = [student_user for student_user in users if student_user.get("student_id") != student_id]
-        save_users(users)
-
-        flash("Student removed successfully.", "success")
-        return redirect(url_for("admin_dashboard"))
+        flash("Student removed.", "success")
+        return redirect(url_for("dashboard"))
 
     @app.route("/students/<student_id>/records/add", methods=["POST"])
     def add_student_record(student_id: str):
@@ -272,10 +325,10 @@ def register_routes(app: Flask) -> None:
         student = get_student_by_id(student_id)
         if not student:
             flash("Student not found.", "error")
-            return redirect(url_for("admin_dashboard"))
+            return redirect(url_for("dashboard"))
 
         if user.get("role") != "admin" and user.get("student_id") != student_id:
-            flash("You do not have access to modify this student record.", "error")
+            flash("You do not have access.", "error")
             return redirect(url_for("dashboard"))
 
         course_code = request.form.get("course_code", "").strip().upper()
@@ -283,7 +336,7 @@ def register_routes(app: Flask) -> None:
         grade = request.form.get("grade", "").strip().upper()
 
         if not course_code or not credit_hours or not grade:
-            flash("Course code, credit hours, and grade are required.", "error")
+            flash("All fields are required.", "error")
             return redirect(url_for("student_detail", student_id=student_id))
 
         try:
@@ -295,7 +348,7 @@ def register_routes(app: Flask) -> None:
             students = [item for item in load_students() if item.get("student_id") != student_id]
             students.append(student)
             save_students(students)
-            flash("Course record added successfully.", "success")
+            flash("Course added.", "success")
         except ValueError as exc:
             flash(str(exc), "error")
 
@@ -311,24 +364,24 @@ def register_routes(app: Flask) -> None:
         student = get_student_by_id(student_id)
         if not student:
             flash("Student not found.", "error")
-            return redirect(url_for("admin_dashboard"))
+            return redirect(url_for("dashboard"))
 
         if user.get("role") != "admin" and user.get("student_id") != student_id:
-            flash("You do not have access to change this student record.", "error")
+            flash("You do not have access.", "error")
             return redirect(url_for("dashboard"))
 
         records = student.get("records", [])
         student["records"] = [record for record in records if record.get("course_code") != course_code.upper()]
-
         students = [item for item in load_students() if item.get("student_id") != student_id]
         students.append(student)
         save_students(students)
-        flash("Course removed successfully.", "success")
+        flash("Course removed.", "success")
         return redirect(url_for("student_detail", student_id=student_id))
 
     @app.context_processor
     def inject_session_data():
+        current_user = get_current_user()
         return {
-            "current_user": get_current_user(),
-            "is_admin": get_current_user() and get_current_user().get("role") == "admin",
+            "current_user": current_user,
+            "is_admin": current_user and current_user.get("role") == "admin",
         }

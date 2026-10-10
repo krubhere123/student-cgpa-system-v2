@@ -3,45 +3,63 @@
 {% block title %}Admin Dashboard{% endblock %}
 
 {% block content %}
-  <section class="panel">
-    <div class="page-header">
-      <div>
-        <h1>Admin Dashboard</h1>
-        <p>Manage all student records and monitor academic performance.</p>
-      </div>
-      <a class="btn btn-primary" href="{{ url_for('create_student') }}">Add Student</a>
+  <div class="content-container">
+    <div class="page-head">
+      <h1>Admin Dashboard</h1>
+      <a href="{{ url_for('create_student') }}" class="btn-primary">Add New Student</a>
     </div>
 
-    {% if students %}
-      <table>
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-value">{{ summary['total_students'] }}</div>
+        <div class="stat-label">Total Students</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ '%.2f'|format(summary['average_cgpa']) }}</div>
+        <div class="stat-label">Avg CGPA</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ summary['good_standing'] }}</div>
+        <div class="stat-label">Good Standing</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ summary['at_risk'] }}</div>
+        <div class="stat-label">At Risk</div>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="data-table">
         <thead>
           <tr>
             <th>Student ID</th>
             <th>Name</th>
             <th>CGPA</th>
-            <th>Actions</th>
+            <th>Status</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
           {% for student in students %}
             <tr>
-              <td>{{ student['student_id'] }}</td>
+              <td class="id-col">{{ student['student_id'] }}</td>
               <td>{{ student['name'] }}</td>
               <td>{{ '%.4f'|format(student['cgpa']) }}</td>
-              <td class="action-cell">
-                <a class="btn btn-small btn-secondary" href="{{ url_for('student_detail', student_id=student['student_id']) }}">View</a>
-                <form method="post" action="{{ url_for('delete_student', student_id=student['student_id']) }}" onsubmit="return confirm('Delete this student?');">
-                  <button class="btn btn-small btn-danger" type="submit">Delete</button>
+              <td>
+                <span class="badge {% if student['cgpa'] >= 3.0 %}badge-good{% else %}badge-risk{% endif %}">
+                  {{ 'Good' if student['cgpa'] >= 3.0 else 'Risk' }}
+                </span>
+              </td>
+              <td class="action-col">
+                <a href="{{ url_for('student_detail', student_id=student['student_id']) }}" class="link-btn">View</a>
+                <form method="post" action="{{ url_for('delete_student', student_id=student['student_id']) }}" class="inline-form">
+                  <button type="submit" class="link-btn danger" onclick="return confirm('Delete?')">Delete</button>
                 </form>
               </td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
-    {% else %}
-      <div class="empty-state">
-        <p>No students found. Create the first student record.</p>
-      </div>
-    {% endif %}
-  </section>
+    </div>
+  </div>
 {% endblock %}

@@ -1,31 +1,26 @@
 {% extends 'base.html' %}
 
-{% block title %}Login{% endblock %}
+{% block title %}Login - CGPA System{% endblock %}
 
 {% block content %}
-  <div class="login-page">
-    <div class="brand-top">Student CGPA System</div>
-    <h1 class="login-heading">Login</h1>
+  <div class="auth-box">
+    <div class="auth-header">
+      <h1>Login</h1>
+      <p>Student CGPA Performance System</p>
+    </div>
 
-    <h2 class="hero-title">Student CGPA System</h2>
-    <p class="hero-subtitle">Secure student performance and admin monitoring portal.</p>
-
-    <form method="post" action="{{ url_for('login') }}" class="login-form">
-      <div class="field-row">
-        <label for="username">Username</label>
-        <input id="username" name="username" type="text" placeholder="Enter username" required>
+    <form method="post" action="{{ url_for('login') }}" class="auth-form">
+      <div class="form-group">
+        <input type="text" name="username" placeholder="Username" required autofocus>
       </div>
-
-      <div class="field-row">
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password" placeholder="Enter password" required>
+      <div class="form-group">
+        <input type="password" name="password" placeholder="Password" required>
       </div>
-
-      <button type="submit" class="login-btn">Login</button>
+      <button type="submit" class="btn-primary">Sign In</button>
     </form>
 
-    <div class="demo-box">
-      <h3>Demo credentials</h3>
+    <div class="auth-footer">
+      <h4>Demo Credentials</h4>
       <p><strong>Admin:</strong> admin / admin123</p>
       <p><strong>Student:</strong> student / student123</p>
     </div>
