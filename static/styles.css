@@ -1,389 +1,146 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+{% extends 'base.html' %}
 
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background-color: #f5f7fa;
-    color: #333;
-    line-height: 1.6;
-}
+{% block title %}Teacher Dashboard - CGPA System{% endblock %}
 
-.page-wrapper {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
+{% block content %}
+<div class="container">
+    <div class="dashboard-header">
+        <h1>Teacher Dashboard</h1>
+        <p class="student-id">{{ teacher['name'] }} • {{ teacher['department'] }}</p>
+    </div>
 
-/* Navbar */
-.navbar {
-    background: white;
-    border-bottom: 1px solid #e1e8ed;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
+    <div class="stats-grid">
+        <div class="stat-box">
+            <div class="stat-label">Assigned Courses</div>
+            <div class="stat-value">{{ teacher['courses']|length }}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Supervised Students</div>
+            <div class="stat-value">{{ students|length }}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Published Announcements</div>
+            <div class="stat-value">{{ announcements|length }}</div>
+        </div>
+    </div>
 
-.nav-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-    height: 60px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+    <div class="split-grid">
+        <div class="panel">
+            <h2>My Courses</h2>
+            <div class="pill-list">
+                {% for course in teacher['courses'] %}
+                    <span class="pill">{{ course }}</span>
+                {% endfor %}
+            </div>
+        </div>
 
-.nav-brand {
-    font-size: 20px;
-    font-weight: 700;
-    color: #2c3e50;
-    text-decoration: none;
-}
+        <div class="panel">
+            <h2>Publish Announcement</h2>
+            <form method="post" action="{{ url_for('add_announcement') }}" class="form-stack">
+                <input type="text" name="title" placeholder="Announcement title" required>
+                <textarea name="message" rows="3" placeholder="Write announcement" required></textarea>
+                <button type="submit" class="btn btn-primary small-btn">Publish</button>
+            </form>
+        </div>
+    </div>
 
-.nav-links {
-    display: flex;
-    gap: 30px;
-    align-items: center;
-}
+    <div class="split-grid">
+        <div class="panel">
+            <h2>Create Assignment</h2>
+            <form method="post" action="{{ url_for('add_assignment') }}" class="form-stack">
+                <input type="text" name="title" placeholder="Assignment title" required>
+                <select name="course" required>
+                    <option value="">Select course</option>
+                    {% for course in teacher['courses'] %}
+                        <option value="{{ course }}">{{ course }}</option>
+                    {% endfor %}
+                </select>
+                <input type="date" name="due" required>
+                <textarea name="description" rows="3" placeholder="Assignment details" required></textarea>
+                <button type="submit" class="btn btn-primary small-btn">Save Assignment</button>
+            </form>
+        </div>
 
-.nav-link {
-    color: #555;
-    text-decoration: none;
-    font-weight: 500;
-    transition: color 0.3s ease;
-}
+        <div class="panel">
+            <h2>Announcements</h2>
+            {% if announcements %}
+                {% for item in announcements %}
+                <div class="info-card">
+                    <strong>{{ item['title'] }}</strong>
+                    <p>{{ item['message'] }}</p>
+                    <span>by {{ item['author'] }}</span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="empty-message">No announcements yet.</p>
+            {% endif %}
+        </div>
+    </div>
 
-.nav-link:hover {
-    color: #3498db;
-}
+    <div class="panel full-width">
+        <h2>Student Performance</h2>
+        {% if students %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Course</th>
+                    <th>Current Grade</th>
+                    <th>Update Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                    {% for record in student['courses'] %}
+                    <tr>
+                        <td>{{ student['name'] }}</td>
+                        <td>{{ record['course_code'] }}</td>
+                        <td><span class="grade-badge">{{ record['grade'] }}</span></td>
+                        <td>
+                            <form method="post" action="{{ url_for('update_teacher_grade', student_id=student['student_id'], course_code=record['course_code']) }}" class="inline-grade-form">
+                                <select name="grade" required>
+                                    <option value="">Grade</option>
+                                    <option value="A">A</option>
+                                    <option value="A-">A-</option>
+                                    <option value="B+">B+</option>
+                                    <option value="B">B</option>
+                                    <option value="B-">B-</option>
+                                    <option value="C+">C+</option>
+                                    <option value="C">C</option>
+                                    <option value="D">D</option>
+                                    <option value="F">F</option>
+                                </select>
+                                <button type="submit" class="btn btn-small">Save</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-message">No students assigned yet.</p>
+        {% endif %}
+    </div>
 
-/* Alerts */
-.alert {
-    margin: 20px auto;
-    max-width: 1200px;
-    padding: 12px 16px;
-    border-radius: 6px;
-    font-size: 14px;
-    width: 90%;
-}
-
-.alert-success {
-    background-color: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-.alert-error {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-}
-
-/* Login Page */
-.login-container {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.login-box {
-    background: white;
-    border-radius: 10px;
-    padding: 40px;
-    width: 100%;
-    max-width: 400px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-}
-
-.login-box h1 {
-    font-size: 24px;
-    margin-bottom: 8px;
-    color: #2c3e50;
-    text-align: center;
-}
-
-.subtitle {
-    text-align: center;
-    color: #7f8c8d;
-    margin-bottom: 30px;
-    font-size: 14px;
-}
-
-/* Forms */
-.login-form {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    margin-bottom: 25px;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.form-group label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #2c3e50;
-}
-
-.form-group input {
-    padding: 10px 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 14px;
-    transition: border-color 0.3s ease;
-}
-
-.form-group input:focus {
-    outline: none;
-    border-color: #3498db;
-    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-}
-
-/* Buttons */
-.btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.btn-primary {
-    background-color: #3498db;
-    color: white;
-    width: 100%;
-}
-
-.btn-primary:hover {
-    background-color: #2980b9;
-    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
-}
-
-/* Demo Credentials */
-.demo-creds {
-    border-top: 1px solid #e1e8ed;
-    padding-top: 20px;
-}
-
-.demo-creds h4 {
-    font-size: 13px;
-    font-weight: 600;
-    color: #555;
-    margin-bottom: 12px;
-    text-transform: uppercase;
-}
-
-.cred-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 13px;
-    margin-bottom: 8px;
-    font-family: 'Courier New', monospace;
-}
-
-.cred-row .role {
-    font-weight: 600;
-    color: #2c3e50;
-}
-
-.cred-row .user {
-    color: #7f8c8d;
-}
-
-/* Dashboard */
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 40px 20px;
-    flex: 1;
-}
-
-.dashboard-header {
-    margin-bottom: 35px;
-}
-
-.dashboard-header h1 {
-    font-size: 28px;
-    color: #2c3e50;
-    margin-bottom: 8px;
-}
-
-.student-id {
-    color: #7f8c8d;
-    font-size: 14px;
-}
-
-/* Stats Grid */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
-    margin-bottom: 35px;
-}
-
-.stat-box {
-    background: white;
-    border-radius: 8px;
-    padding: 20px;
-    border: 1px solid #e1e8ed;
-    text-align: center;
-}
-
-.stat-label {
-    font-size: 12px;
-    color: #7f8c8d;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 10px;
-    font-weight: 600;
-}
-
-.stat-value {
-    font-size: 28px;
-    font-weight: 700;
-    color: #3498db;
-}
-
-/* Tables */
-.table-section {
-    background: white;
-    border-radius: 8px;
-    border: 1px solid #e1e8ed;
-    padding: 20px;
-    overflow: hidden;
-}
-
-.table-section h2 {
-    font-size: 18px;
-    margin-bottom: 16px;
-    color: #2c3e50;
-}
-
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.data-table thead {
-    background-color: #f8f9fa;
-}
-
-.data-table th {
-    padding: 12px;
-    text-align: left;
-    font-size: 12px;
-    font-weight: 600;
-    color: #555;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 2px solid #e1e8ed;
-}
-
-.data-table td {
-    padding: 14px 12px;
-    border-bottom: 1px solid #e1e8ed;
-    font-size: 14px;
-}
-
-.data-table tbody tr:hover {
-    background-color: #f8f9fa;
-}
-
-/* Badges */
-.badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.badge-success {
-    background-color: #d4edda;
-    color: #155724;
-}
-
-.badge-warning {
-    background-color: #fff3cd;
-    color: #856404;
-}
-
-.grade-badge {
-    background-color: #e3f2fd;
-    color: #1565c0;
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-weight: 600;
-}
-
-/* Empty State */
-.empty-message {
-    text-align: center;
-    padding: 40px 20px;
-    color: #7f8c8d;
-    font-size: 14px;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .nav-container {
-        flex-direction: column;
-        height: auto;
-        padding: 12px 20px;
-        gap: 12px;
-    }
-
-    .nav-links {
-        width: 100%;
-        justify-content: space-around;
-        gap: 15px;
-    }
-
-    .login-box {
-        padding: 30px 20px;
-    }
-
-    .container {
-        padding: 20px 15px;
-    }
-
-    .stats-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .dashboard-header h1 {
-        font-size: 22px;
-    }
-
-    .data-table {
-        font-size: 13px;
-    }
-
-    .data-table th,
-    .data-table td {
-        padding: 10px 8px;
-    }
-}
-
-@media (max-width: 480px) {
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .nav-brand {
-        font-size: 16px;
-    }
-}
+    <div class="panel full-width">
+        <h2>Assignments Feed</h2>
+        {% if assignments %}
+            <div class="assignment-list">
+                {% for assignment in assignments %}
+                <div class="assignment-card">
+                    <div class="assignment-header">
+                        <strong>{{ assignment['title'] }}</strong>
+                        <span class="pill">{{ assignment['course'] }}</span>
+                    </div>
+                    <p>{{ assignment['description'] }}</p>
+                    <small>Due: {{ assignment['due'] }}</small>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-message">No assignments created yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

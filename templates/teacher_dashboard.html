@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard - CGPA System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="dashboard-header">
+        <h1>Admin Dashboard</h1>
+        <p class="subtitle">All Students Overview</p>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-box">
+            <div class="stat-label">Total Students</div>
+            <div class="stat-value">{{ students|length }}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Average CGPA</div>
+            <div class="stat-value">{% set avg = (students|map(attribute='cgpa')|sum) / (students|length or 1) %}{{ '%.2f'|format(avg) }}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Good Standing</div>
+            <div class="stat-value">{{ students|selectattr('cgpa', 'ge', 3.0)|list|length }}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">At Risk</div>
+            <div class="stat-value">{{ students|selectattr('cgpa', 'lt', 3.0)|list|length }}</div>
+        </div>
+    </div>
+
+    <div class="table-section">
+        <h2>Student List</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Student ID</th>
+                    <th>Name</th>
+                    <th>CGPA</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr>
+                    <td><strong>{{ student['student_id'] }}</strong></td>
+                    <td>{{ student['name'] }}</td>
+                    <td>{{ '%.4f'|format(student['cgpa']) }}</td>
+                    <td>
+                        {% if student['cgpa'] >= 3.0 %}
+                            <span class="badge badge-success">Good Standing</span>
+                        {% else %}
+                            <span class="badge badge-warning">At Risk</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

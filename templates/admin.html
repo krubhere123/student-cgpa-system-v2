@@ -1,61 +1,90 @@
 {% extends 'base.html' %}
 
-{% block title %}Admin Dashboard - CGPA System{% endblock %}
+{% block title %}Student Dashboard - CGPA System{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="dashboard-header">
-        <h1>Admin Dashboard</h1>
-        <p class="subtitle">All Students Overview</p>
+        <h1>Welcome, {{ student['name'] }}</h1>
+        <p class="student-id">ID: {{ student['student_id'] }} • {{ status }}</p>
     </div>
 
     <div class="stats-grid">
         <div class="stat-box">
-            <div class="stat-label">Total Students</div>
-            <div class="stat-value">{{ students|length }}</div>
+            <div class="stat-label">Current CGPA</div>
+            <div class="stat-value">{{ '%.4f'|format(cgpa) }}</div>
         </div>
         <div class="stat-box">
-            <div class="stat-label">Average CGPA</div>
-            <div class="stat-value">{% set avg = (students|map(attribute='cgpa')|sum) / (students|length or 1) %}{{ '%.2f'|format(avg) }}</div>
+            <div class="stat-label">Total Courses</div>
+            <div class="stat-value">{{ student['records']|length }}</div>
         </div>
         <div class="stat-box">
-            <div class="stat-label">Good Standing</div>
-            <div class="stat-value">{{ students|selectattr('cgpa', 'ge', 3.0)|list|length }}</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-label">At Risk</div>
-            <div class="stat-value">{{ students|selectattr('cgpa', 'lt', 3.0)|list|length }}</div>
+            <div class="stat-label">Total Credits</div>
+            <div class="stat-value">{{ student['records']|map(attribute='credit_hours')|sum }}</div>
         </div>
     </div>
 
-    <div class="table-section">
-        <h2>Student List</h2>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Student ID</th>
-                    <th>Name</th>
-                    <th>CGPA</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for student in students %}
-                <tr>
-                    <td><strong>{{ student['student_id'] }}</strong></td>
-                    <td>{{ student['name'] }}</td>
-                    <td>{{ '%.4f'|format(student['cgpa']) }}</td>
-                    <td>
-                        {% if student['cgpa'] >= 3.0 %}
-                            <span class="badge badge-success">Good Standing</span>
-                        {% else %}
-                            <span class="badge badge-warning">At Risk</span>
-                        {% endif %}
-                    </td>
-                </tr>
+    <div class="split-grid">
+        <div class="panel">
+            <h2>Course Records</h2>
+            {% if student['records'] %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Course</th>
+                        <th>Credits</th>
+                        <th>Grade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in student['records'] %}
+                    <tr>
+                        <td>{{ record['course_code'] }}</td>
+                        <td>{{ record['credit_hours'] }}</td>
+                        <td><span class="grade-badge">{{ record['grade'] }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="empty-message">No course records found.</p>
+            {% endif %}
+        </div>
+
+        <div class="panel">
+            <h2>Announcements</h2>
+            {% if announcements %}
+                {% for item in announcements %}
+                <div class="info-card">
+                    <strong>{{ item['title'] }}</strong>
+                    <p>{{ item['message'] }}</p>
+                    <span>by {{ item['author'] }}</span>
+                </div>
                 {% endfor %}
-            </tbody>
-        </table>
+            {% else %}
+                <p class="empty-message">No announcements available.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="panel full-width">
+        <h2>Assignments</h2>
+        {% if assignments %}
+            <div class="assignment-list">
+                {% for assignment in assignments %}
+                <div class="assignment-card">
+                    <div class="assignment-header">
+                        <strong>{{ assignment['title'] }}</strong>
+                        <span class="pill">{{ assignment['course'] }}</span>
+                    </div>
+                    <p>{{ assignment['description'] }}</p>
+                    <small>Due: {{ assignment['due'] }}</small>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-message">No assignments available.</p>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
