@@ -17,6 +17,9 @@ def register_routes(app: Flask) -> None:
     DATA_DIR = BASE_DIR / "data"
     USERS_FILE = DATA_DIR / "users.json"
     STUDENTS_FILE = DATA_DIR / "students.json"
+    TEACHERS_FILE = DATA_DIR / "teachers.json"
+    ANNOUNCEMENTS_FILE = DATA_DIR / "announcements.json"
+    ASSIGNMENTS_FILE = DATA_DIR / "assignments.json"
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -25,6 +28,15 @@ def register_routes(app: Flask) -> None:
 
     def save_students(students: List[Dict[str, Any]]) -> None:
         STUDENTS_FILE.write_text(json.dumps(students, indent=2), encoding="utf-8")
+
+    def save_teachers(teachers: List[Dict[str, Any]]) -> None:
+        TEACHERS_FILE.write_text(json.dumps(teachers, indent=2), encoding="utf-8")
+
+    def save_announcements(announcements: List[Dict[str, Any]]) -> None:
+        ANNOUNCEMENTS_FILE.write_text(json.dumps(announcements, indent=2), encoding="utf-8")
+
+    def save_assignments(assignments: List[Dict[str, Any]]) -> None:
+        ASSIGNMENTS_FILE.write_text(json.dumps(assignments, indent=2), encoding="utf-8")
 
     def load_users() -> List[Dict[str, Any]]:
         if not USERS_FILE.exists():
@@ -35,6 +47,21 @@ def register_routes(app: Flask) -> None:
         if not STUDENTS_FILE.exists():
             return []
         return json.loads(STUDENTS_FILE.read_text(encoding="utf-8"))
+
+    def load_teachers() -> List[Dict[str, Any]]:
+        if not TEACHERS_FILE.exists():
+            return []
+        return json.loads(TEACHERS_FILE.read_text(encoding="utf-8"))
+
+    def load_announcements() -> List[Dict[str, Any]]:
+        if not ANNOUNCEMENTS_FILE.exists():
+            return []
+        return json.loads(ANNOUNCEMENTS_FILE.read_text(encoding="utf-8"))
+
+    def load_assignments() -> List[Dict[str, Any]]:
+        if not ASSIGNMENTS_FILE.exists():
+            return []
+        return json.loads(ASSIGNMENTS_FILE.read_text(encoding="utf-8"))
 
     def ensure_seed_data() -> None:
         if not USERS_FILE.exists():
@@ -51,6 +78,13 @@ def register_routes(app: Flask) -> None:
                     "role": "student",
                     "student_id": "STD-1001",
                     "name": "Ada Johnson",
+                },
+                {
+                    "username": "teacher",
+                    "password_hash": generate_password_hash("teacher123"),
+                    "role": "teacher",
+                    "teacher_id": "T-1001",
+                    "name": "Prof. Alice Carter",
                 },
             ]
             save_users(default_users)
@@ -79,6 +113,28 @@ def register_routes(app: Flask) -> None:
             ]
             save_students(default_students)
 
+        if not TEACHERS_FILE.exists():
+            save_teachers([
+                {
+                    "teacher_id": "T-1001",
+                    "name": "Prof. Alice Carter",
+                    "department": "Computer Science",
+                    "courses": ["CS101", "MATH201", "ENG110"],
+                }
+            ])
+
+        if not ANNOUNCEMENTS_FILE.exists():
+            save_announcements([
+                {"id": 1, "title": "Midterm Exam Schedule", "message": "The midterm exam for CS101 will be held next Friday at 10:00 AM.", "author": "Prof. Alice Carter"},
+                {"id": 2, "title": "Assignment Upload", "message": "Submit your MATH201 assignment before the end of this week.", "author": "Prof. Alice Carter"},
+            ])
+
+        if not ASSIGNMENTS_FILE.exists():
+            save_assignments([
+                {"id": 1, "title": "Research Summary", "course": "CS101", "due": "2026-10-18", "description": "Write a 500-word summary of your latest lecture topic."},
+                {"id": 2, "title": "Problem Set 3", "course": "MATH201", "due": "2026-10-20", "description": "Complete the algebra problem set and submit in PDF format."},
+            ])
+
     ensure_seed_data()
 
     def get_current_user() -> Dict[str, Any] | None:
@@ -100,6 +156,37 @@ def register_routes(app: Flask) -> None:
             for item in records
         ]
 
+    def teacher_dashboard_data(user: Dict[str, Any]) -> Dict[str, Any]:
+        teacher = next((item for item in load_teachers() if item.get("teacher_id") == user.get("teacher_id")), None)
+        if teacher is None:
+            teacher = {
+                "teacher_id": user.get("teacher_id", "T-1001"),
+                "name": user.get("name", "Teacher"),
+                "department": "General",
+                "courses": [],
+            }
+
+        students = load_students()
+        supervise_students = []
+        for student in students:
+            their_courses = [
+                record for record in student.get("records", [])
+                if record.get("course_code") in teacher.get("courses", [])
+            ]
+            if their_courses:
+                supervise_students.append({
+                    "student_id": student.get("student_id"),
+                    "name": student.get("name"),
+                    "courses": their_courses,
+                })
+
+        return {
+            "teacher": teacher,
+            "students": supervise_students,
+            "announcements": load_announcements(),
+            "assignments": load_assignments(),
+        }
+
     @app.route("/")
     def index():
         if session.get("user"):
@@ -119,6 +206,7 @@ def register_routes(app: Flask) -> None:
                 session["user"] = user["username"]
                 session["role"] = user.get("role", "student")
                 session["student_id"] = user.get("student_id")
+                session["teacher_id"] = user.get("teacher_id")
                 flash("Login successful!", "success")
                 return redirect(url_for("dashboard"))
 
@@ -139,24 +227,37 @@ def register_routes(app: Flask) -> None:
             flash("Please log in first.", "error")
             return redirect(url_for("login"))
 
-        students = load_students()
-        if user.get("role") == "admin":
+        role = user.get("role", "student")
+        if role == "admin":
+            students = load_students()
             enriched_students = []
             for student in students:
                 cgpa = CGPAService().calculate_cgpa_from_records(
-                    student_records_to_course_records(student["records"])
+                    student_records_to_course_records(student.get("records", []))
                 )
                 enriched_students.append({**student, "cgpa": cgpa})
             return render_template("admin.html", students=enriched_students)
 
-        student = next((s for s in students if s["student_id"] == user.get("student_id")), None)
+        if role == "teacher":
+            data = teacher_dashboard_data(user)
+            return render_template("teacher_dashboard.html", **data)
+
+        student = next((s for s in load_students() if s["student_id"] == user.get("student_id")), None)
         if not student:
             flash("Student record not found.", "error")
             return redirect(url_for("logout"))
 
-        cgpa = CGPAService().calculate_cgpa_from_records(student_records_to_course_records(student["records"]))
-        return render_template("dashboard.html", student=student, cgpa=cgpa)
+        cgpa = CGPAService().calculate_cgpa_from_records(student_records_to_course_records(student.get("records", [])))
+        announcements = load_announcements()
+        assignments = load_assignments()
+        return render_template("dashboard.html", student=student, cgpa=cgpa, announcements=announcements, assignments=assignments)
 
     @app.context_processor
     def inject_user():
-        return {"current_user": get_current_user()}
+        current_user = get_current_user()
+        return {
+            "current_user": current_user,
+            "is_admin": current_user and current_user.get("role") == "admin",
+            "is_teacher": current_user and current_user.get("role") == "teacher",
+            "is_student": current_user and current_user.get("role") == "student",
+        }
