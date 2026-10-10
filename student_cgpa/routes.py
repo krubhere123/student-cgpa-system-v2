@@ -9,6 +9,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from student_cgpa.models import CourseRecord
 from student_cgpa.services.cgpa_service import CGPAService
+from student_cgpa.services.validators import GradeValidator
 
 
 def register_routes(app: Flask) -> None:
@@ -21,6 +22,19 @@ def register_routes(app: Flask) -> None:
 
     def save_users(users: List[Dict[str, Any]]) -> None:
         USERS_FILE.write_text(json.dumps(users, indent=2), encoding="utf-8")
+
+    def save_students(students: List[Dict[str, Any]]) -> None:
+        STUDENTS_FILE.write_text(json.dumps(students, indent=2), encoding="utf-8")
+
+    def load_users() -> List[Dict[str, Any]]:
+        if not USERS_FILE.exists():
+            return []
+        return json.loads(USERS_FILE.read_text(encoding="utf-8"))
+
+    def load_students() -> List[Dict[str, Any]]:
+        if not STUDENTS_FILE.exists():
+            return []
+        return json.loads(STUDENTS_FILE.read_text(encoding="utf-8"))
 
     if not USERS_FILE.exists():
         default_users = [
@@ -62,13 +76,7 @@ def register_routes(app: Flask) -> None:
                 ],
             },
         ]
-        STUDENTS_FILE.write_text(json.dumps(default_students, indent=2), encoding="utf-8")
-
-    def load_users() -> List[Dict[str, Any]]:
-        return json.loads(USERS_FILE.read_text(encoding="utf-8"))
-
-    def load_students() -> List[Dict[str, Any]]:
-        return json.loads(STUDENTS_FILE.read_text(encoding="utf-8"))
+        save_students(default_students)
 
     def get_current_user() -> Dict[str, Any] | None:
         username = session.get("user")
@@ -82,33 +90,47 @@ def register_routes(app: Flask) -> None:
     def student_records_to_course_records(records: List[Dict[str, Any]]) -> List[CourseRecord]:
         return [
             CourseRecord(
-                course_code=item["course_code"],
-                credit_hours=int(item["credit_hours"]),
-                grade=item["grade"],
+                course_code=item.get("course_code", ""),
+                credit_hours=int(item.get("credit_hours", 0)),
+                grade=item.get("grade", ""),
             )
             for item in records
         ]
 
+    def get_student_by_id(student_id: str) -> Dict[str, Any] | None:
+        for student in load_students():
+            if student.get("student_id") == student_id:
+                return student
+        return None
+
+    def calculate_student_cgpa(student: Dict[str, Any]) -> float:
+        records = student.get("records", [])
+        if not records:
+            return 0.0
+        return CGPAService().calculate_cgpa_from_records(student_records_to_course_records(records))
+
     def login_user(username: str, password: str) -> Dict[str, Any] | None:
+        normalized_name = (username or "").strip()
+        if not normalized_name:
+            return None
+
         users = load_users()
-        user = next((item for item in users if item.get("username") == username), None)
-
-        if username in {"admin", "student"} and password in {"admin": "admin123", "student": "student123"}[username]:
-            if user is None:
-                user = {
-                    "username": username,
-                    "role": "admin" if username == "admin" else "student",
-                    "name": "System Administrator" if username == "admin" else "Ada Johnson",
-                    "student_id": "STD-1001" if username == "student" else None,
-                }
-                users.append(user)
-
-            user["password_hash"] = generate_password_hash(password)
-            save_users(users)
-
-            return user
+        user = next((item for item in users if item.get("username") == normalized_name), None)
 
         if user and user.get("password_hash") and check_password_hash(user["password_hash"], password):
+            return user
+
+        if normalized_name in {"admin", "student"} and password in {"admin": "admin123", "student": "student123"}[normalized_name]:
+            if user is None:
+                user = {
+                    "username": normalized_name,
+                    "role": "admin" if normalized_name == "admin" else "student",
+                    "name": "System Administrator" if normalized_name == "admin" else "Ada Johnson",
+                    "student_id": "STD-1001" if normalized_name == "student" else None,
+                }
+                users.append(user)
+                user["password_hash"] = generate_password_hash(password)
+                save_users(users)
             return user
 
         return None
@@ -150,20 +172,163 @@ def register_routes(app: Flask) -> None:
             flash("Please log in first.", "error")
             return redirect(url_for("login"))
 
-        students = load_students()
         if user.get("role") == "admin":
+            students = load_students()
             enriched_students = []
             for student in students:
-                cgpa = CGPAService().calculate_cgpa_from_records(
-                    student_records_to_course_records(student["records"])
-                )
-                enriched_students.append({**student, "cgpa": cgpa})
+                enriched_students.append({**student, "cgpa": calculate_student_cgpa(student)})
             return render_template("admin.html", students=enriched_students)
 
-        student = next((item for item in students if item["student_id"] == user.get("student_id")), None)
+        student = get_student_by_id(user.get("student_id") or "")
         if not student:
             flash("Student record not found.", "error")
             return redirect(url_for("logout"))
 
-        cgpa = CGPAService().calculate_cgpa_from_records(student_records_to_course_records(student["records"]))
+        cgpa = calculate_student_cgpa(student)
         return render_template("dashboard.html", student=student, cgpa=cgpa)
+
+    @app.route("/admin")
+    def admin_dashboard():
+        return dashboard()
+
+    @app.route("/students/new", methods=["GET", "POST"])
+    def create_student():
+        user = get_current_user()
+        if not user or user.get("role") != "admin":
+            flash("Admin access required.", "error")
+            return redirect(url_for("login"))
+
+        if request.method == "POST":
+            student_id = request.form.get("student_id", "").strip()
+            name = request.form.get("name", "").strip()
+
+            if not student_id or not name:
+                flash("Student ID and name are required.", "error")
+                return render_template("student_form.html", student=None, action="Create", is_admin=True)
+
+            students = load_students()
+            if any(item.get("student_id") == student_id for item in students):
+                flash("A student with that ID already exists.", "error")
+                return render_template("student_form.html", student=None, action="Create", is_admin=True)
+
+            students.append({"student_id": student_id, "name": name, "records": []})
+            save_students(students)
+            flash("Student created successfully.", "success")
+            return redirect(url_for("admin_dashboard"))
+
+        return render_template("student_form.html", student=None, action="Create", is_admin=True)
+
+    @app.route("/students/<student_id>", methods=["GET", "POST"])
+    def student_detail(student_id: str):
+        user = get_current_user()
+        if not user:
+            flash("Please log in first.", "error")
+            return redirect(url_for("login"))
+
+        student = get_student_by_id(student_id)
+        if not student:
+            flash("Student not found.", "error")
+            return redirect(url_for("admin_dashboard"))
+
+        if user.get("role") != "admin" and user.get("student_id") != student_id:
+            flash("You do not have access to that student profile.", "error")
+            return redirect(url_for("dashboard"))
+
+        if request.method == "POST" and user.get("role") == "admin":
+            new_name = request.form.get("name", "").strip()
+            if new_name:
+                student["name"] = new_name
+                save_students([s for s in load_students() if s.get("student_id") != student_id] + [student])
+                flash("Student record updated successfully.", "success")
+
+        student = get_student_by_id(student_id)
+        return render_template("student_detail.html", student=student, cgpa=calculate_student_cgpa(student), is_admin=(user.get("role") == "admin"))
+
+    @app.route("/students/<student_id>/delete", methods=["POST"])
+    def delete_student(student_id: str):
+        user = get_current_user()
+        if not user or user.get("role") != "admin":
+            flash("Admin access required.", "error")
+            return redirect(url_for("login"))
+
+        students = load_students()
+        students = [student for student in students if student.get("student_id") != student_id]
+        save_students(students)
+
+        users = load_users()
+        users = [student_user for student_user in users if student_user.get("student_id") != student_id]
+        save_users(users)
+
+        flash("Student removed successfully.", "success")
+        return redirect(url_for("admin_dashboard"))
+
+    @app.route("/students/<student_id>/records/add", methods=["POST"])
+    def add_student_record(student_id: str):
+        user = get_current_user()
+        if not user:
+            flash("Please log in first.", "error")
+            return redirect(url_for("login"))
+
+        student = get_student_by_id(student_id)
+        if not student:
+            flash("Student not found.", "error")
+            return redirect(url_for("admin_dashboard"))
+
+        if user.get("role") != "admin" and user.get("student_id") != student_id:
+            flash("You do not have access to modify this student record.", "error")
+            return redirect(url_for("dashboard"))
+
+        course_code = request.form.get("course_code", "").strip().upper()
+        credit_hours = request.form.get("credit_hours", "0").strip()
+        grade = request.form.get("grade", "").strip().upper()
+
+        if not course_code or not credit_hours or not grade:
+            flash("Course code, credit hours, and grade are required.", "error")
+            return redirect(url_for("student_detail", student_id=student_id))
+
+        try:
+            validated_hours = int(credit_hours)
+            GradeValidator.validate_credit_hours(validated_hours)
+            grade = GradeValidator.validate_grade(grade)
+            record = {"course_code": course_code, "credit_hours": validated_hours, "grade": grade}
+            student.setdefault("records", []).append(record)
+            students = [item for item in load_students() if item.get("student_id") != student_id]
+            students.append(student)
+            save_students(students)
+            flash("Course record added successfully.", "success")
+        except ValueError as exc:
+            flash(str(exc), "error")
+
+        return redirect(url_for("student_detail", student_id=student_id))
+
+    @app.route("/students/<student_id>/records/<course_code>/delete", methods=["POST"])
+    def delete_student_record(student_id: str, course_code: str):
+        user = get_current_user()
+        if not user:
+            flash("Please log in first.", "error")
+            return redirect(url_for("login"))
+
+        student = get_student_by_id(student_id)
+        if not student:
+            flash("Student not found.", "error")
+            return redirect(url_for("admin_dashboard"))
+
+        if user.get("role") != "admin" and user.get("student_id") != student_id:
+            flash("You do not have access to change this student record.", "error")
+            return redirect(url_for("dashboard"))
+
+        records = student.get("records", [])
+        student["records"] = [record for record in records if record.get("course_code") != course_code.upper()]
+
+        students = [item for item in load_students() if item.get("student_id") != student_id]
+        students.append(student)
+        save_students(students)
+        flash("Course removed successfully.", "success")
+        return redirect(url_for("student_detail", student_id=student_id))
+
+    @app.context_processor
+    def inject_session_data():
+        return {
+            "current_user": get_current_user(),
+            "is_admin": get_current_user() and get_current_user().get("role") == "admin",
+        }
