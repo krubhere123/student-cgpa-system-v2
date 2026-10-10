@@ -1,13 +1,13 @@
 [
   {
     "username": "admin",
-    "password_hash": "pbkdf2:sha256:600000$JpJtn5Wl2mT7P8nLfxnIY5U0$0f0d9953b629ab93bdf08b4b4d758d7e4d8f1da60020259a77e1b8a823f8e551",
+    "password_hash": "scrypt:32768:8:1$c5icnUmqxVFgPWya$cc37f412ac72128071bbd282e8ebe9b1360c639acca360e44edde6bd10dcf76cb37e9eff5509a5f83afed32e018daa21b1fce38e032d8b627800fa39bafd97ce",
     "role": "admin",
     "name": "System Administrator"
   },
   {
     "username": "student",
-    "password_hash": "pbkdf2:sha256:600000$P0UK4G0k7c4Dzu071U3sH2be$73d1f785bc7eb2ef7d8d9be6ab1d9c84d93d7ecaf3b72baf0e6c1c544f9bf6d",
+    "password_hash": "scrypt:32768:8:1$DX8PfkuHmnbjvdz2$1d638c1a31920851a6b04f5be479c31402639c6bd982a70f1671f21771b0ac535f1724fd661658fdad667a78a9bdb786fb4e5e05e638c80b217c00049e4337c8",
     "role": "student",
     "student_id": "STD-1001",
     "name": "Ada Johnson"
