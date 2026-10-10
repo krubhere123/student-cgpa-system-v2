@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "title": "Research Summary",
+    "course": "CS101",
+    "due": "2026-10-18",
+    "description": "Write a 500-word summary of your latest lecture topic."
+  },
+  {
+    "id": 2,
+    "title": "Problem Set 3",
+    "course": "MATH201",
+    "due": "2026-10-20",
+    "description": "Complete the algebra problem set and submit in PDF format."
+  }
+]

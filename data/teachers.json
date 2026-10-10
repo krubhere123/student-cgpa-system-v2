@@ -1,0 +1,12 @@
+[
+  {
+    "teacher_id": "T-1001",
+    "name": "Prof. Alice Carter",
+    "department": "Computer Science",
+    "courses": [
+      "CS101",
+      "MATH201",
+      "ENG110"
+    ]
+  }
+]

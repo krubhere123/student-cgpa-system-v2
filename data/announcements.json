@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "title": "Midterm Exam Schedule",
+    "message": "The midterm exam for CS101 will be held next Friday at 10:00 AM.",
+    "author": "Prof. Alice Carter"
+  },
+  {
+    "id": 2,
+    "title": "Assignment Upload",
+    "message": "Submit your MATH201 assignment before the end of this week.",
+    "author": "Prof. Alice Carter"
+  }
+]
