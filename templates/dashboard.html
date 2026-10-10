@@ -11,19 +11,19 @@
 
     <div class="stats-row">
       <div class="stat-card">
-        <div class="stat-value">{{ summary['total_students'] }}</div>
+        <div class="stat-value">{{ students|length }}</div>
         <div class="stat-label">Total Students</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">{{ '%.2f'|format(summary['average_cgpa']) }}</div>
+        <div class="stat-value">{{ '%0.2f'|format((students|map(attribute='cgpa')|sum / (students|length or 1))) }}</div>
         <div class="stat-label">Avg CGPA</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">{{ summary['good_standing'] }}</div>
+        <div class="stat-value">{{ students|selectattr('cgpa', 'ge', 3.0)|list|length }}</div>
         <div class="stat-label">Good Standing</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">{{ summary['at_risk'] }}</div>
+        <div class="stat-value">{{ students|selectattr('cgpa', 'lt', 3.0)|list|length }}</div>
         <div class="stat-label">At Risk</div>
       </div>
     </div>
@@ -53,7 +53,7 @@
               <td class="action-col">
                 <a href="{{ url_for('student_detail', student_id=student['student_id']) }}" class="link-btn">View</a>
                 <form method="post" action="{{ url_for('delete_student', student_id=student['student_id']) }}" class="inline-form">
-                  <button type="submit" class="link-btn danger" onclick="return confirm('Delete?')">Delete</button>
+                  <button type="submit" class="link-btn danger" onclick="return confirm('Delete this student?')">Delete</button>
                 </form>
               </td>
             </tr>

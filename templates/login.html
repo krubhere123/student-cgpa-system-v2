@@ -1,28 +1,37 @@
-{% extends 'base.html' %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Student CGPA{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    {% if session.get('user') %}
+      <nav class="header">
+        <div class="nav-container">
+          <a href="{{ url_for('dashboard') }}" class="logo">CGPA System</a>
+          <div class="nav-right">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            {% if is_admin %}
+              <a href="{{ url_for('create_student') }}">+ Student</a>
+            {% endif %}
+            <a href="{{ url_for('logout') }}">Logout</a>
+          </div>
+        </div>
+      </nav>
+    {% endif %}
 
-{% block title %}Login - CGPA System{% endblock %}
+    <main class="{% if not session.get('user') %}auth-layout{% else %}app-layout{% endif %}">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="toast {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
 
-{% block content %}
-  <div class="auth-box">
-    <div class="auth-header">
-      <h1>Login</h1>
-      <p>Student CGPA Performance System</p>
-    </div>
-
-    <form method="post" action="{{ url_for('login') }}" class="auth-form">
-      <div class="form-group">
-        <input type="text" name="username" placeholder="Username" required autofocus>
-      </div>
-      <div class="form-group">
-        <input type="password" name="password" placeholder="Password" required>
-      </div>
-      <button type="submit" class="btn-primary">Sign In</button>
-    </form>
-
-    <div class="auth-footer">
-      <h4>Demo Credentials</h4>
-      <p><strong>Admin:</strong> admin / admin123</p>
-      <p><strong>Student:</strong> student / student123</p>
-    </div>
-  </div>
-{% endblock %}
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>
