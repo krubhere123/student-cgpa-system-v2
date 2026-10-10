@@ -65,7 +65,7 @@
               <td>{{ record['grade'] }}</td>
               <td class="action-col">
                 <form method="post" action="{{ url_for('delete_student_record', student_id=student['student_id'], course_code=record['course_code']) }}" class="inline-form">
-                  <button type="submit" class="link-btn danger" onclick="return confirm('Remove?')">Remove</button>
+                  <button type="submit" class="link-btn danger" onclick="return confirm('Remove this course?')">Remove</button>
                 </form>
               </td>
             </tr>
