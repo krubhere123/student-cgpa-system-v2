@@ -4,6 +4,7 @@ import json
 # Generate fresh password hashes
 admin_hash = generate_password_hash("admin123")
 student_hash = generate_password_hash("student123")
+teacher_hash = generate_password_hash("teacher123")
 
 users = [
     {
@@ -18,6 +19,13 @@ users = [
         "role": "student",
         "student_id": "STD-1001",
         "name": "Ada Johnson"
+    },
+    {
+        "username": "teacher",
+        "password_hash": teacher_hash,
+        "role": "teacher",
+        "teacher_id": "T-1001",
+        "name": "Prof. Alice Carter"
     }
 ]
 

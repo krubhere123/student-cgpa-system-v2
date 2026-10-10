@@ -89,6 +89,19 @@ def register_routes(app: Flask) -> None:
             ]
             save_users(default_users)
 
+        # Add the demo teacher to older user files created before teacher login
+        # was introduced. Do not replace or rewrite existing credentials.
+        existing_users = load_users()
+        if not any(user.get("role") == "teacher" for user in existing_users):
+            existing_users.append({
+                "username": "teacher",
+                "password_hash": generate_password_hash("teacher123"),
+                "role": "teacher",
+                "teacher_id": "T-1001",
+                "name": "Prof. Alice Carter",
+            })
+            save_users(existing_users)
+
         if not STUDENTS_FILE.exists():
             default_students = [
                 {
@@ -236,7 +249,7 @@ def register_routes(app: Flask) -> None:
                     student_records_to_course_records(student.get("records", []))
                 )
                 enriched_students.append({**student, "cgpa": cgpa})
-            return render_template("admin.html", students=enriched_students)
+            return render_template("admin.html", students=enriched_students, teachers=load_teachers())
 
         if role == "teacher":
             data = teacher_dashboard_data(user)
@@ -251,6 +264,94 @@ def register_routes(app: Flask) -> None:
         announcements = load_announcements()
         assignments = load_assignments()
         return render_template("dashboard.html", student=student, cgpa=cgpa, announcements=announcements, assignments=assignments)
+
+    def require_role(role: str):
+        user = get_current_user()
+        if not user or user.get("role") != role:
+            flash("You are not authorized to perform this action.", "error")
+            return None
+        return user
+
+    @app.route("/admin/teachers", methods=["POST"])
+    def add_teacher():
+        if not require_role("admin"):
+            return redirect(url_for("login"))
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        name = request.form.get("name", "").strip()
+        teacher_id = request.form.get("teacher_id", "").strip()
+        department = request.form.get("department", "").strip()
+        courses = list(dict.fromkeys(c.strip().upper() for c in request.form.get("courses", "").split(",") if c.strip()))
+        users, teachers = load_users(), load_teachers()
+        if not all((username, password, name, teacher_id, department)):
+            flash("Complete all teacher fields.", "error")
+        elif any(u.get("username", "").casefold() == username.casefold() for u in users):
+            flash("That username is already in use.", "error")
+        elif any(t.get("teacher_id") == teacher_id for t in teachers):
+            flash("That teacher ID already exists.", "error")
+        else:
+            users.append({"username": username, "password_hash": generate_password_hash(password), "role": "teacher", "teacher_id": teacher_id, "name": name})
+            teachers.append({"teacher_id": teacher_id, "name": name, "department": department, "courses": courses})
+            save_users(users)
+            save_teachers(teachers)
+            flash("Teacher login created.", "success")
+        return redirect(url_for("dashboard"))
+
+    @app.route("/teacher/announcements", methods=["POST"])
+    def add_announcement():
+        user = require_role("teacher")
+        if not user:
+            return redirect(url_for("login"))
+        title, message = request.form.get("title", "").strip(), request.form.get("message", "").strip()
+        if title and message:
+            items = load_announcements()
+            items.append({"id": max((x.get("id", 0) for x in items), default=0) + 1, "title": title, "message": message, "author": user.get("name", user["username"])})
+            save_announcements(items)
+            flash("Announcement published.", "success")
+        else:
+            flash("Enter an announcement title and message.", "error")
+        return redirect(url_for("dashboard"))
+
+    @app.route("/teacher/assignments", methods=["POST"])
+    def add_assignment():
+        user = require_role("teacher")
+        if not user:
+            return redirect(url_for("login"))
+        title, course = request.form.get("title", "").strip(), request.form.get("course", "").strip().upper()
+        teacher = next((t for t in load_teachers() if t.get("teacher_id") == user.get("teacher_id")), {})
+        if title and course in teacher.get("courses", []) and request.form.get("due") and request.form.get("description", "").strip():
+            items = load_assignments()
+            items.append({"id": max((x.get("id", 0) for x in items), default=0) + 1, "title": title, "course": course, "due": request.form["due"], "description": request.form["description"].strip()})
+            save_assignments(items)
+            flash("Assignment created.", "success")
+        else:
+            flash("Enter assignment details for one of your assigned courses.", "error")
+        return redirect(url_for("dashboard"))
+
+    @app.route("/teacher/grades/<student_id>/<course_code>", methods=["POST"])
+    def update_teacher_grade(student_id: str, course_code: str):
+        user = require_role("teacher")
+        if not user:
+            return redirect(url_for("login"))
+        teacher = next((t for t in load_teachers() if t.get("teacher_id") == user.get("teacher_id")), {})
+        if course_code not in teacher.get("courses", []):
+            flash("You are not assigned to that course.", "error")
+            return redirect(url_for("dashboard"))
+        try:
+            grade = GradeValidator.validate_grade(request.form.get("grade", ""))
+        except ValueError:
+            flash("Select a valid grade.", "error")
+            return redirect(url_for("dashboard"))
+        students = load_students()
+        student = next((s for s in students if s.get("student_id") == student_id), None)
+        record = next((r for r in student.get("records", []) if r.get("course_code") == course_code), None) if student else None
+        if not record:
+            flash("Student course record not found.", "error")
+        else:
+            record["grade"] = grade
+            save_students(students)
+            flash("Grade updated.", "success")
+        return redirect(url_for("dashboard"))
 
     @app.context_processor
     def inject_user():

@@ -11,5 +11,12 @@
     "role": "student",
     "student_id": "STD-1001",
     "name": "Ada Johnson"
+  },
+  {
+    "username": "teacher",
+    "password_hash": "scrypt:32768:8:1$Y7WilzSAgIVIcpnm$1b22250e24703ed19348a18bd243886841657a92fd5181c1544e9d147abbfcbe10656d8daaf11ec808082ed6a7f3ee1aed150ed05c93b222c27d9c874a95d82a",
+    "role": "teacher",
+    "teacher_id": "T-1001",
+    "name": "Prof. Alice Carter"
   }
 ]

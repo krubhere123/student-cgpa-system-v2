@@ -4,7 +4,7 @@ A clean, working academic performance and CGPA management app built with Flask.
 
 ## Features
 
-- Student login and admin login
+- Student, teacher, and admin login
 - Role-based access control
 - CGPA calculation from course records
 - Lightweight JSON-based data storage for demo use
@@ -47,6 +47,9 @@ http://127.0.0.1:5000
 
 - Admin: `admin` / `admin123`
 - Student: `student` / `student123`
+- Teacher: `teacher` / `teacher123`
+
+Admins can create additional teacher logins from the Admin Dashboard. Each teacher is assigned a unique teacher ID and a comma-separated list of courses.
 
 ## Project structure
 
