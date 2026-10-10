@@ -1,0 +1,42 @@
+AI-Assisted Development Experiment — Detailed Answers
+
+1. What is an AI-augmented development environment?
+
+An AI-augmented development environment is a software development setup in which a programmer uses AI tools alongside ordinary development tools. It can include an editor or IDE, a terminal, Git, documentation, automated checks, and an AI coding assistant. The AI may explain unfamiliar code, suggest an implementation, identify likely defects, or help write documentation. The developer still sets the goal, supplies relevant context, evaluates suggestions, and decides which changes should be kept. In this experiment, the project files and existing Flask routes provided the context for identifying why teacher login was missing and for adding student-management features.
+
+2. Why is Git important in AI-assisted development?
+
+Git keeps a history of the project's changes. When an AI assistant edits code, Git lets the developer inspect the diff to see exactly which files and lines changed. This makes it easier to catch unrelated or incorrect edits, compare the result with the original, and restore a previous version if needed. Git branches also let a developer try a change without immediately affecting the main line of work, and commits provide useful checkpoints. In an AI-assisted workflow, reviewing the diff is especially important because generated changes can be broad or based on mistaken assumptions.
+
+3. What is an AI coding assistant?
+
+An AI coding assistant is a tool that uses a model trained to work with natural language and code to help with software development. Depending on the tool, it can answer questions, summarize code, suggest fixes, generate or edit files, and help diagnose errors. It responds to instructions and the context it can access, such as selected code or repository files. It is an assistant rather than an authority: its output may be incomplete, outdated, insecure, or incorrect, so the developer must verify it before relying on it.
+
+4. What is repository context?
+
+Repository context is the project-specific information that helps a developer or AI assistant understand how a codebase is organized and how its parts work together. It includes source files, templates, data formats, dependencies, documentation, tests, naming conventions, and existing design choices. For example, this project uses Flask routes, Jinja templates, JSON files for users and student records, and Werkzeug password hashes. Knowing those details helps an assistant make changes that fit the existing application instead of proposing an unrelated framework or storage system. Context should be relevant and current; showing only one isolated function may hide important dependencies elsewhere in the repository.
+
+5. What is an AI engineering journal?
+
+An AI engineering journal is a concise record of work completed with AI assistance. It can note the task, the context or instructions given, the important decisions made, files changed, problems discovered, and how the result was checked. It should distinguish between what the AI proposed and what the developer reviewed or accepted. For example, a journal entry for this experiment could record that the existing user data lacked a teacher login, that some teacher dashboard actions had no corresponding routes, and which validation or checks were performed after changes. Such a journal helps with reproducibility, accountability, reflection, and handoff to another developer.
+
+6. Why should AI-generated code be reviewed?
+
+AI-generated code should be reviewed because plausible-looking code is not necessarily correct. It may misunderstand the requested behavior, miss an existing route or data dependency, mishandle edge cases, introduce security weaknesses, or fail to follow the project's conventions. Review should include checking the diff, tracing how the new code interacts with the rest of the application, validating inputs and authorization, and considering failure cases. For this project, for example, creating a teacher login also required checking how the teacher ID connects the login record to the teacher profile and assigned courses. Human review is needed to decide whether the implementation is appropriate for real users and the intended deployment.
+
+7. How can coding standards be enforced?
+
+Coding standards can be enforced through a combination of clear written conventions and repeatable tools. A project can document naming, formatting, error handling, security, and architectural expectations. Formatters and linters can automatically detect style problems or common mistakes. Code reviews can check whether a change follows the design and remains understandable. Automated checks can run before a change is merged. Small, consistent examples in the codebase also guide both human contributors and AI assistants. Standards work best when they are specific, easy to follow, and applied consistently rather than being an informal list that nobody checks.
+
+8. Why are automated tests important for AI-generated code?
+
+Automated tests check expected behavior in a repeatable way. They can detect regressions, such as a login flow breaking after a route change, and confirm important cases such as valid input, invalid input, and access restrictions. Tests are useful for AI-generated code because the AI may not notice all the ways a change affects existing features. A strong workflow runs relevant tests after reviewing a change and adds tests for important new behavior. Tests do not prove that software is completely correct or secure: they only check the cases they cover, so code review and other checks remain necessary.
+
+9. What information should never be provided to an AI coding assistant?
+
+Do not provide secrets or sensitive information unless the specific AI service and the organization's rules explicitly permit that use. Examples include passwords, API keys, access tokens, private certificates, database credentials, personal or student records, confidential business information, and unreleased proprietary code. Even when working on a local repository, check whether files contain secrets before sharing them with a hosted service. Use approved secret-management tools and redacted examples instead. Follow applicable privacy, security, and organizational policies, since data sent to an assistant may be handled differently depending on the product and its configuration.
+
+10. How does repository context improve AI-generated code?
+
+Repository context lets an AI assistant base its suggestions on the actual project rather than on generic assumptions. It can identify which framework and libraries are already used, follow existing patterns, find the relevant templates and data structures, and notice that a form calls a route that may not exist. This usually makes the proposed code more compatible and reduces integration work. In this experiment, inspecting the Flask routes, JSON user data, and Jinja templates revealed that the teacher role was partly implemented but its account was missing from the existing users file. Repository-wide context also helps the developer spot connected work, such as updating documentation or handling empty student records. Context improves relevance, but it does not guarantee correctness; generated changes still need review and validation.
+
