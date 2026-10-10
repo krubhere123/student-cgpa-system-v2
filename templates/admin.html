@@ -12,7 +12,7 @@
     <div class="stats-grid">
         <div class="stat-box">
             <div class="stat-label">Total Students</div>
-            <div class="stat-value">{{ students|length }}</div>
+            <div class="stat-value">{{ total_students }}</div>
         </div>
         <div class="stat-box">
             <div class="stat-label">Average CGPA</div>
@@ -25,6 +25,27 @@
         <div class="stat-box">
             <div class="stat-label">At Risk</div>
             <div class="stat-value">{{ students|selectattr('cgpa', 'lt', 3.0)|list|length }}</div>
+        </div>
+    </div>
+
+    <div class="split-grid">
+        <div class="panel">
+            <h2>Add Student Account</h2>
+            <form method="post" action="{{ url_for('add_student') }}" class="form-stack">
+                <input name="student_id" placeholder="Student ID" required>
+                <input name="name" placeholder="Full name" required>
+                <input name="username" placeholder="Login username" required>
+                <input name="password" type="password" placeholder="Temporary password" required>
+                <button type="submit" class="btn btn-primary">Create Student</button>
+            </form>
+        </div>
+        <div class="panel">
+            <h2>Student Records</h2>
+            <form method="get" action="{{ url_for('dashboard') }}" class="form-stack">
+                <input name="q" value="{{ query }}" placeholder="Search by name or student ID">
+                <button type="submit" class="btn btn-primary">Search Students</button>
+            </form>
+            <p style="margin-top: 12px;"><a href="{{ url_for('export_students') }}">Download performance CSV</a></p>
         </div>
     </div>
 
@@ -42,12 +63,13 @@
     </div>
 
     <div class="table-section">
-        <h2>Student List</h2>
+        <h2>Student List{% if query %} (search: {{ query }}){% endif %}</h2>
         <table class="data-table">
             <thead>
                 <tr>
                     <th>Student ID</th>
                     <th>Name</th>
+                    <th>Courses</th>
                     <th>CGPA</th>
                     <th>Status</th>
                 </tr>
@@ -56,7 +78,8 @@
                 {% for student in students %}
                 <tr>
                     <td><strong>{{ student['student_id'] }}</strong></td>
-                    <td>{{ student['name'] }}</td>
+                    <td><a href="{{ url_for('student_detail', student_id=student['student_id']) }}">{{ student['name'] }}</a></td>
+                    <td>{{ student['records']|length }}</td>
                     <td>{{ '%.4f'|format(student['cgpa']) }}</td>
                     <td>
                         {% if student['cgpa'] >= 3.0 %}

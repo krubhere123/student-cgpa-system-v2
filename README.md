@@ -7,6 +7,9 @@ A clean, working academic performance and CGPA management app built with Flask.
 - Student, teacher, and admin login
 - Role-based access control
 - CGPA calculation from course records
+- Admin tools to create student and teacher logins, manage course records, search students, and export performance data
+- Teacher tools to update grades, publish announcements, and create course assignments
+- Student dashboards with CGPA, course records, announcements, and assignments
 - Lightweight JSON-based data storage for demo use
 - Clean dashboard UI
 - Audit-friendly structure
