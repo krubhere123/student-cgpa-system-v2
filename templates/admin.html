@@ -4,26 +4,44 @@
 
 {% block content %}
   <section class="panel">
-    <h1>Admin Dashboard</h1>
-    <p>Manage all student records and monitor academic performance.</p>
+    <div class="page-header">
+      <div>
+        <h1>Admin Dashboard</h1>
+        <p>Manage all student records and monitor academic performance.</p>
+      </div>
+      <a class="btn btn-primary" href="{{ url_for('create_student') }}">Add Student</a>
+    </div>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Student ID</th>
-          <th>Name</th>
-          <th>CGPA</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for student in students %}
+    {% if students %}
+      <table>
+        <thead>
           <tr>
-            <td>{{ student['student_id'] }}</td>
-            <td>{{ student['name'] }}</td>
-            <td>{{ '%.4f'|format(student['cgpa']) }}</td>
+            <th>Student ID</th>
+            <th>Name</th>
+            <th>CGPA</th>
+            <th>Actions</th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {% for student in students %}
+            <tr>
+              <td>{{ student['student_id'] }}</td>
+              <td>{{ student['name'] }}</td>
+              <td>{{ '%.4f'|format(student['cgpa']) }}</td>
+              <td class="action-cell">
+                <a class="btn btn-secondary btn-small" href="{{ url_for('student_detail', student_id=student['student_id']) }}">View</a>
+                <form method="post" action="{{ url_for('delete_student', student_id=student['student_id']) }}" onsubmit="return confirm('Delete this student?');">
+                  <button class="btn btn-danger btn-small" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">
+        <p>No students found. Create the first student record.</p>
+      </div>
+    {% endif %}
   </section>
 {% endblock %}
