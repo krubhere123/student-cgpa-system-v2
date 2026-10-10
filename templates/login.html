@@ -3,18 +3,25 @@
 {% block title %}Login{% endblock %}
 
 {% block content %}
-  <section class="auth-card">
-    <h1>Student CGPA System</h1>
-    <p>Secure student performance and admin monitoring portal.</p>
+  <div class="login-page">
+    <div class="brand-top">Student CGPA System</div>
+    <h1 class="login-heading">Login</h1>
 
-    <form method="post" action="{{ url_for('login') }}">
-      <label for="username">Username</label>
-      <input id="username" name="username" type="text" placeholder="Enter username" required>
+    <h2 class="hero-title">Student CGPA System</h2>
+    <p class="hero-subtitle">Secure student performance and admin monitoring portal.</p>
 
-      <label for="password">Password</label>
-      <input id="password" name="password" type="password" placeholder="Enter password" required>
+    <form method="post" action="{{ url_for('login') }}" class="login-form">
+      <div class="field-row">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" placeholder="Enter username" required>
+      </div>
 
-      <button type="submit">Login</button>
+      <div class="field-row">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" placeholder="Enter password" required>
+      </div>
+
+      <button type="submit" class="login-btn">Login</button>
     </form>
 
     <div class="demo-box">
@@ -22,5 +29,5 @@
       <p><strong>Admin:</strong> admin / admin123</p>
       <p><strong>Student:</strong> student / student123</p>
     </div>
-  </section>
+  </div>
 {% endblock %}

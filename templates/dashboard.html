@@ -1,40 +1,47 @@
 {% extends 'base.html' %}
 
-{% block title %}Dashboard{% endblock %}
+{% block title %}Admin Dashboard{% endblock %}
 
 {% block content %}
   <section class="panel">
-    <h1>Dashboard</h1>
-    <p>Welcome, {{ student['name'] }}.</p>
-
-    <div class="stats-grid">
-      <div class="stat-box">
-        <span class="label">Student ID</span>
-        <strong>{{ student['student_id'] }}</strong>
+    <div class="page-header">
+      <div>
+        <h1>Admin Dashboard</h1>
+        <p>Manage all student records and monitor academic performance.</p>
       </div>
-      <div class="stat-box">
-        <span class="label">CGPA</span>
-        <strong>{{ '%.4f'|format(cgpa) }}</strong>
-      </div>
+      <a class="btn btn-primary" href="{{ url_for('create_student') }}">Add Student</a>
     </div>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Course</th>
-          <th>Credits</th>
-          <th>Grade</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for record in student['records'] %}
+    {% if students %}
+      <table>
+        <thead>
           <tr>
-            <td>{{ record['course_code'] }}</td>
-            <td>{{ record['credit_hours'] }}</td>
-            <td>{{ record['grade'] }}</td>
+            <th>Student ID</th>
+            <th>Name</th>
+            <th>CGPA</th>
+            <th>Actions</th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {% for student in students %}
+            <tr>
+              <td>{{ student['student_id'] }}</td>
+              <td>{{ student['name'] }}</td>
+              <td>{{ '%.4f'|format(student['cgpa']) }}</td>
+              <td class="action-cell">
+                <a class="btn btn-small btn-secondary" href="{{ url_for('student_detail', student_id=student['student_id']) }}">View</a>
+                <form method="post" action="{{ url_for('delete_student', student_id=student['student_id']) }}" onsubmit="return confirm('Delete this student?');">
+                  <button class="btn btn-small btn-danger" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">
+        <p>No students found. Create the first student record.</p>
+      </div>
+    {% endif %}
   </section>
 {% endblock %}
