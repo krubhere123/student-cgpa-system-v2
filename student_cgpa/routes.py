@@ -76,15 +76,6 @@ def register_routes(app: Flask) -> None:
                         {"course_code": "HIST210", "credit_hours": 2, "grade": "A"},
                     ],
                 },
-                {
-                    "student_id": "STD-1003",
-                    "name": "Sophia Lee",
-                    "records": [
-                        {"course_code": "CS210", "credit_hours": 3, "grade": "B+"},
-                        {"course_code": "ENG202", "credit_hours": 3, "grade": "C+"},
-                        {"course_code": "STAT110", "credit_hours": 3, "grade": "B"},
-                    ],
-                },
             ]
             save_students(default_students)
 
@@ -109,77 +100,6 @@ def register_routes(app: Flask) -> None:
             for item in records
         ]
 
-    def get_student_by_id(student_id: str) -> Dict[str, Any] | None:
-        for student in load_students():
-            if student.get("student_id") == student_id:
-                return student
-        return None
-
-    def calculate_student_cgpa(student: Dict[str, Any]) -> float:
-        records = student.get("records", [])
-        if not records:
-            return 0.0
-        return CGPAService().calculate_cgpa_from_records(student_records_to_course_records(records))
-
-    def get_student_status(cgpa: float) -> str:
-        if cgpa >= 3.5:
-            return "Excellent"
-        if cgpa >= 3.0:
-            return "Good Standing"
-        if cgpa >= 2.0:
-            return "Satisfactory"
-        return "At Risk"
-
-    def build_admin_summary(students: List[Dict[str, Any]]) -> Dict[str, Any]:
-        if not students:
-            return {
-                "total_students": 0,
-                "average_cgpa": 0.0,
-                "highest_cgpa": 0.0,
-                "good_standing": 0,
-                "at_risk": 0,
-            }
-
-        cgpas = [calculate_student_cgpa(student) for student in students]
-        statuses = [get_student_status(cgpa) for cgpa in cgpas]
-        good_standing = sum(1 for status in statuses if status in {"Excellent", "Good Standing"})
-        at_risk = sum(1 for status in statuses if status == "At Risk")
-
-        return {
-            "total_students": len(students),
-            "average_cgpa": round(sum(cgpas) / len(cgpas), 4) if cgpas else 0.0,
-            "highest_cgpa": round(max(cgpas), 4) if cgpas else 0.0,
-            "good_standing": good_standing,
-            "at_risk": at_risk,
-        }
-
-    def login_user(username: str, password: str) -> Dict[str, Any] | None:
-        normalized_name = (username or "").strip()
-        if not normalized_name:
-            return None
-
-        users = load_users()
-        user = next((item for item in users if item.get("username") == normalized_name), None)
-
-        if user and user.get("password_hash") and check_password_hash(user["password_hash"], password):
-            return user
-
-        if normalized_name in {"admin", "student"} and password in {"admin": "admin123", "student": "student123"}[normalized_name]:
-            if user is None:
-                user = {
-                    "username": normalized_name,
-                    "role": "admin" if normalized_name == "admin" else "student",
-                    "name": "System Administrator" if normalized_name == "admin" else "Ada Johnson",
-                    "student_id": "STD-1001" if normalized_name == "student" else None,
-                }
-                users.append(user)
-
-            user["password_hash"] = generate_password_hash(password)
-            save_users(users)
-            return user
-
-        return None
-
     @app.route("/")
     def index():
         if session.get("user"):
@@ -192,12 +112,14 @@ def register_routes(app: Flask) -> None:
             username = request.form.get("username", "").strip()
             password = request.form.get("password", "")
 
-            user = login_user(username, password)
-            if user is not None:
+            users = load_users()
+            user = next((u for u in users if u.get("username") == username), None)
+
+            if user and check_password_hash(user.get("password_hash", ""), password):
                 session["user"] = user["username"]
                 session["role"] = user.get("role", "student")
                 session["student_id"] = user.get("student_id")
-                flash("Login successful.", "success")
+                flash("Login successful!", "success")
                 return redirect(url_for("dashboard"))
 
             flash("Invalid username or password.", "error")
@@ -219,169 +141,22 @@ def register_routes(app: Flask) -> None:
 
         students = load_students()
         if user.get("role") == "admin":
-            enriched_students = [
-                {**student, "cgpa": calculate_student_cgpa(student)} for student in students
-            ]
-            return render_template(
-                "admin.html",
-                students=enriched_students,
-                summary=build_admin_summary(enriched_students),
-            )
+            enriched_students = []
+            for student in students:
+                cgpa = CGPAService().calculate_cgpa_from_records(
+                    student_records_to_course_records(student["records"])
+                )
+                enriched_students.append({**student, "cgpa": cgpa})
+            return render_template("admin.html", students=enriched_students)
 
-        student = next((item for item in students if item["student_id"] == user.get("student_id")), None)
+        student = next((s for s in students if s["student_id"] == user.get("student_id")), None)
         if not student:
             flash("Student record not found.", "error")
             return redirect(url_for("logout"))
 
-        cgpa = calculate_student_cgpa(student)
-        return render_template(
-            "dashboard.html",
-            student=student,
-            cgpa=cgpa,
-            status=get_student_status(cgpa),
-        )
-
-    @app.route("/students/new", methods=["GET", "POST"])
-    def create_student():
-        user = get_current_user()
-        if not user or user.get("role") != "admin":
-            flash("Admin access required.", "error")
-            return redirect(url_for("login"))
-
-        if request.method == "POST":
-            student_id = request.form.get("student_id", "").strip()
-            name = request.form.get("name", "").strip()
-
-            if not student_id or not name:
-                flash("Student ID and name are required.", "error")
-                return render_template("student_form.html", action="Create")
-
-            students = load_students()
-            if any(item.get("student_id") == student_id for item in students):
-                flash("A student with that ID already exists.", "error")
-                return render_template("student_form.html", action="Create")
-
-            students.append({"student_id": student_id, "name": name, "records": []})
-            save_students(students)
-            flash("Student created successfully.", "success")
-            return redirect(url_for("dashboard"))
-
-        return render_template("student_form.html", action="Create")
-
-    @app.route("/students/<student_id>", methods=["GET", "POST"])
-    def student_detail(student_id: str):
-        user = get_current_user()
-        if not user:
-            flash("Please log in first.", "error")
-            return redirect(url_for("login"))
-
-        student = get_student_by_id(student_id)
-        if not student:
-            flash("Student not found.", "error")
-            return redirect(url_for("dashboard"))
-
-        if user.get("role") != "admin" and user.get("student_id") != student_id:
-            flash("You do not have access to that student profile.", "error")
-            return redirect(url_for("dashboard"))
-
-        if request.method == "POST" and user.get("role") == "admin":
-            new_name = request.form.get("name", "").strip()
-            if new_name:
-                student["name"] = new_name
-                students = [item for item in load_students() if item.get("student_id") != student_id]
-                students.append(student)
-                save_students(students)
-                flash("Student record updated.", "success")
-
-        cgpa = calculate_student_cgpa(student)
-        return render_template(
-            "student_detail.html",
-            student=student,
-            cgpa=cgpa,
-            status=get_student_status(cgpa),
-            is_admin=(user.get("role") == "admin"),
-        )
-
-    @app.route("/students/<student_id>/delete", methods=["POST"])
-    def delete_student(student_id: str):
-        user = get_current_user()
-        if not user or user.get("role") != "admin":
-            flash("Admin access required.", "error")
-            return redirect(url_for("login"))
-
-        students = load_students()
-        students = [student for student in students if student.get("student_id") != student_id]
-        save_students(students)
-        flash("Student removed.", "success")
-        return redirect(url_for("dashboard"))
-
-    @app.route("/students/<student_id>/records/add", methods=["POST"])
-    def add_student_record(student_id: str):
-        user = get_current_user()
-        if not user:
-            flash("Please log in first.", "error")
-            return redirect(url_for("login"))
-
-        student = get_student_by_id(student_id)
-        if not student:
-            flash("Student not found.", "error")
-            return redirect(url_for("dashboard"))
-
-        if user.get("role") != "admin" and user.get("student_id") != student_id:
-            flash("You do not have access.", "error")
-            return redirect(url_for("dashboard"))
-
-        course_code = request.form.get("course_code", "").strip().upper()
-        credit_hours = request.form.get("credit_hours", "0").strip()
-        grade = request.form.get("grade", "").strip().upper()
-
-        if not course_code or not credit_hours or not grade:
-            flash("All fields are required.", "error")
-            return redirect(url_for("student_detail", student_id=student_id))
-
-        try:
-            validated_hours = int(credit_hours)
-            GradeValidator.validate_credit_hours(validated_hours)
-            grade = GradeValidator.validate_grade(grade)
-            record = {"course_code": course_code, "credit_hours": validated_hours, "grade": grade}
-            student.setdefault("records", []).append(record)
-            students = [item for item in load_students() if item.get("student_id") != student_id]
-            students.append(student)
-            save_students(students)
-            flash("Course added.", "success")
-        except ValueError as exc:
-            flash(str(exc), "error")
-
-        return redirect(url_for("student_detail", student_id=student_id))
-
-    @app.route("/students/<student_id>/records/<course_code>/delete", methods=["POST"])
-    def delete_student_record(student_id: str, course_code: str):
-        user = get_current_user()
-        if not user:
-            flash("Please log in first.", "error")
-            return redirect(url_for("login"))
-
-        student = get_student_by_id(student_id)
-        if not student:
-            flash("Student not found.", "error")
-            return redirect(url_for("dashboard"))
-
-        if user.get("role") != "admin" and user.get("student_id") != student_id:
-            flash("You do not have access.", "error")
-            return redirect(url_for("dashboard"))
-
-        records = student.get("records", [])
-        student["records"] = [record for record in records if record.get("course_code") != course_code.upper()]
-        students = [item for item in load_students() if item.get("student_id") != student_id]
-        students.append(student)
-        save_students(students)
-        flash("Course removed.", "success")
-        return redirect(url_for("student_detail", student_id=student_id))
+        cgpa = CGPAService().calculate_cgpa_from_records(student_records_to_course_records(student["records"]))
+        return render_template("dashboard.html", student=student, cgpa=cgpa)
 
     @app.context_processor
-    def inject_session_data():
-        current_user = get_current_user()
-        return {
-            "current_user": current_user,
-            "is_admin": current_user and current_user.get("role") == "admin",
-        }
+    def inject_user():
+        return {"current_user": get_current_user()}
