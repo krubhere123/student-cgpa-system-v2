@@ -1,61 +1,146 @@
 {% extends 'base.html' %}
 
-{% block title %}Admin Dashboard - CGPA System{% endblock %}
+{% block title %}Teacher Dashboard - CGPA System{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="dashboard-header">
-        <h1>Admin Dashboard</h1>
-        <p class="subtitle">All Students Overview</p>
+        <h1>Teacher Dashboard</h1>
+        <p class="student-id">{{ teacher['name'] }} • {{ teacher['department'] }}</p>
     </div>
 
     <div class="stats-grid">
         <div class="stat-box">
-            <div class="stat-label">Total Students</div>
+            <div class="stat-label">Assigned Courses</div>
+            <div class="stat-value">{{ teacher['courses']|length }}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Supervised Students</div>
             <div class="stat-value">{{ students|length }}</div>
         </div>
         <div class="stat-box">
-            <div class="stat-label">Average CGPA</div>
-            <div class="stat-value">{% set avg = (students|map(attribute='cgpa')|sum) / (students|length or 1) %}{{ '%.2f'|format(avg) }}</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-label">Good Standing</div>
-            <div class="stat-value">{{ students|selectattr('cgpa', 'ge', 3.0)|list|length }}</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-label">At Risk</div>
-            <div class="stat-value">{{ students|selectattr('cgpa', 'lt', 3.0)|list|length }}</div>
+            <div class="stat-label">Published Announcements</div>
+            <div class="stat-value">{{ announcements|length }}</div>
         </div>
     </div>
 
-    <div class="table-section">
-        <h2>Student List</h2>
+    <div class="split-grid">
+        <div class="panel">
+            <h2>My Courses</h2>
+            <div class="pill-list">
+                {% for course in teacher['courses'] %}
+                    <span class="pill">{{ course }}</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Publish Announcement</h2>
+            <form method="post" action="{{ url_for('add_announcement') }}" class="form-stack">
+                <input type="text" name="title" placeholder="Announcement title" required>
+                <textarea name="message" rows="3" placeholder="Write announcement" required></textarea>
+                <button type="submit" class="btn btn-primary small-btn">Publish</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="split-grid">
+        <div class="panel">
+            <h2>Create Assignment</h2>
+            <form method="post" action="{{ url_for('add_assignment') }}" class="form-stack">
+                <input type="text" name="title" placeholder="Assignment title" required>
+                <select name="course" required>
+                    <option value="">Select course</option>
+                    {% for course in teacher['courses'] %}
+                        <option value="{{ course }}">{{ course }}</option>
+                    {% endfor %}
+                </select>
+                <input type="date" name="due" required>
+                <textarea name="description" rows="3" placeholder="Assignment details" required></textarea>
+                <button type="submit" class="btn btn-primary small-btn">Save Assignment</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h2>Announcements</h2>
+            {% if announcements %}
+                {% for item in announcements %}
+                <div class="info-card">
+                    <strong>{{ item['title'] }}</strong>
+                    <p>{{ item['message'] }}</p>
+                    <span>by {{ item['author'] }}</span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="empty-message">No announcements yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="panel full-width">
+        <h2>Student Performance</h2>
+        {% if students %}
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Student ID</th>
-                    <th>Name</th>
-                    <th>CGPA</th>
-                    <th>Status</th>
+                    <th>Student</th>
+                    <th>Course</th>
+                    <th>Current Grade</th>
+                    <th>Update Grade</th>
                 </tr>
             </thead>
             <tbody>
                 {% for student in students %}
-                <tr>
-                    <td><strong>{{ student['student_id'] }}</strong></td>
-                    <td>{{ student['name'] }}</td>
-                    <td>{{ '%.4f'|format(student['cgpa']) }}</td>
-                    <td>
-                        {% if student['cgpa'] >= 3.0 %}
-                            <span class="badge badge-success">Good Standing</span>
-                        {% else %}
-                            <span class="badge badge-warning">At Risk</span>
-                        {% endif %}
-                    </td>
-                </tr>
+                    {% for record in student['courses'] %}
+                    <tr>
+                        <td>{{ student['name'] }}</td>
+                        <td>{{ record['course_code'] }}</td>
+                        <td><span class="grade-badge">{{ record['grade'] }}</span></td>
+                        <td>
+                            <form method="post" action="{{ url_for('update_teacher_grade', student_id=student['student_id'], course_code=record['course_code']) }}" class="inline-grade-form">
+                                <select name="grade" required>
+                                    <option value="">Grade</option>
+                                    <option value="A">A</option>
+                                    <option value="A-">A-</option>
+                                    <option value="B+">B+</option>
+                                    <option value="B">B</option>
+                                    <option value="B-">B-</option>
+                                    <option value="C+">C+</option>
+                                    <option value="C">C</option>
+                                    <option value="D">D</option>
+                                    <option value="F">F</option>
+                                </select>
+                                <button type="submit" class="btn btn-small">Save</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
                 {% endfor %}
             </tbody>
         </table>
+        {% else %}
+        <p class="empty-message">No students assigned yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="panel full-width">
+        <h2>Assignments Feed</h2>
+        {% if assignments %}
+            <div class="assignment-list">
+                {% for assignment in assignments %}
+                <div class="assignment-card">
+                    <div class="assignment-header">
+                        <strong>{{ assignment['title'] }}</strong>
+                        <span class="pill">{{ assignment['course'] }}</span>
+                    </div>
+                    <p>{{ assignment['description'] }}</p>
+                    <small>Due: {{ assignment['due'] }}</small>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-message">No assignments created yet.</p>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
