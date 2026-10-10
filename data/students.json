@@ -1,0 +1,21 @@
+[
+  {
+    "student_id": "STD-1001",
+    "name": "Ada Johnson",
+    "records": [
+      {"course_code": "CS101", "credit_hours": 3, "grade": "A"},
+      {"course_code": "MATH201", "credit_hours": 4, "grade": "B+"},
+      {"course_code": "ENG110", "credit_hours": 2, "grade": "A-"},
+      {"course_code": "PHY150", "credit_hours": 3, "grade": "B"}
+    ]
+  },
+  {
+    "student_id": "STD-1002",
+    "name": "Daniel Smith",
+    "records": [
+      {"course_code": "BIO220", "credit_hours": 3, "grade": "A-"},
+      {"course_code": "CHEM101", "credit_hours": 4, "grade": "B"},
+      {"course_code": "HIST210", "credit_hours": 2, "grade": "A"}
+    ]
+  }
+]

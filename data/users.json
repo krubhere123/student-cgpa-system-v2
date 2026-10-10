@@ -1,0 +1,15 @@
+[
+  {
+    "username": "admin",
+    "password_hash": "pbkdf2:sha256:600000$JpJtn5Wl2mT7P8nLfxnIY5U0$0f0d9953b629ab93bdf08b4b4d758d7e4d8f1da60020259a77e1b8a823f8e551",
+    "role": "admin",
+    "name": "System Administrator"
+  },
+  {
+    "username": "student",
+    "password_hash": "pbkdf2:sha256:600000$P0UK4G0k7c4Dzu071U3sH2be$73d1f785bc7eb2ef7d8d9be6ab1d9c84d93d7ecaf3b72baf0e6c1c544f9bf6d",
+    "role": "student",
+    "student_id": "STD-1001",
+    "name": "Ada Johnson"
+  }
+]

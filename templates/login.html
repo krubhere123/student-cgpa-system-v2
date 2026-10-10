@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+  <section class="auth-card">
+    <h1>Student CGPA System</h1>
+    <p>Secure student performance and admin monitoring portal.</p>
+
+    <form method="post" action="{{ url_for('login') }}">
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" placeholder="Enter username" required>
+
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" placeholder="Enter password" required>
+
+      <button type="submit">Login</button>
+    </form>
+
+    <div class="demo-box">
+      <h3>Demo credentials</h3>
+      <p><strong>Admin:</strong> admin / admin123</p>
+      <p><strong>Student:</strong> student / student123</p>
+    </div>
+  </section>
+{% endblock %}
